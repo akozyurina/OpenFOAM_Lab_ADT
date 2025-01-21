@@ -1,0 +1,10 @@
+prefix=/home/ubuntu/OpenFOAM/ThirdParty-dev/ParaView-5.6.3/debian/paraviewopenfoam56/opt/paraviewopenfoam56/mesa
+libdir=${prefix}/lib/x86_64-linux-gnu
+includedir=${prefix}/include
+
+Name: glesv1_cm
+Description: Mesa OpenGL ES 1.1 CM library
+Version: 21.3.5
+Libs: -L${libdir} -lGLESv1_CM
+Libs.private: -lpthread -pthread -lm
+Cflags: -I${includedir}

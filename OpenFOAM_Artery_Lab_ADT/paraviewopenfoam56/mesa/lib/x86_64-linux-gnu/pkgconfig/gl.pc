@@ -1,0 +1,13 @@
+prefix=/home/ubuntu/OpenFOAM/ThirdParty-dev/ParaView-5.6.3/debian/paraviewopenfoam56/opt/paraviewopenfoam56/mesa
+libdir=${prefix}/lib/x86_64-linux-gnu
+includedir=${prefix}/include
+
+glx_tls=yes
+
+Name: gl
+Description: Mesa OpenGL Library
+Version: 21.3.5
+Requires.private: x11, xext, xcb, libdrm >=  2.4.75
+Libs: -L${libdir} -lGL
+Libs.private: -lpthread -pthread -lm
+Cflags: -I${includedir}

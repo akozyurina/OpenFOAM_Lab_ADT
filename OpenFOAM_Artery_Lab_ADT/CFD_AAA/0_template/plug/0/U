@@ -1,0 +1,142 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  8
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    object      U;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 1 -1 0 0 0 0];
+
+internalField   uniform (0 0 0);
+
+boundaryField
+{
+    
+    
+    
+    inlet
+    {
+    type	codedFixedValue;
+    value 	$internalField;
+    name	myPlug;
+    
+    code
+    
+    #{          
+    
+
+    		const dictionary& transportProperties = db().lookupObject<IOdictionary>
+		(
+		 "transportProperties"
+		);
+
+
+		dictionary profile = transportProperties.subDict("profile");
+		
+		List<List<double>> t_u = profile.lookup("t_u");
+		
+		dictionary contour = transportProperties.subDict("contour");
+		
+		List<List<double>> phi_R = contour.lookup("phi_R");
+
+
+                //интерполяция периодического сигна
+                
+               
+       	double t = this->db().time().value();
+                
+                double delta_t = fabs(t_u[1][0] - t_u[0][0]);
+	        int tmin_id = int(t/delta_t);
+	        int tmax_id = tmin_id + 1;
+	    
+	        double t_min = t_u[tmin_id][0];
+	        double u_min = t_u[tmin_id][1];
+	        double t_max = t_u[tmax_id][0];
+	        double u_max = t_u[tmax_id][1];
+	    
+	        double u_t = u_min + (t - t_min) * (u_max - u_min) / (t_max - t_min);
+                
+                
+            
+		 const vectorField& Cf = patch().Cf();
+		 vectorField& inletField = *this;
+                
+          
+          forAll (Cf, faceI)
+          {       
+          
+                 //double U_norm = 1;
+                 
+                 
+          	  const double x = Cf[faceI][0];
+          	  const double y = Cf[faceI][1];
+          	  const double z = Cf[faceI][2];
+          	  
+		  double r = Foam::hypot(x, y);
+		  double phi = Foam::atan2(y, x);
+		  
+		  
+		  // интерполяция R_phi
+		  
+		  //double R_phi = findY(phi, sarr_phi);
+		
+       
+                  double delta_phi = fabs(phi_R[1][0] - phi_R[0][0]);
+	          int phimin_id = int(fabs((phi-phi_R[0][0])/delta_phi));
+	          int phimax_id = phimin_id + 1;
+	    
+	          double phi_min = phi_R[phimin_id][0];
+	          double R_min = phi_R[phimin_id][1];
+	          double phi_max = phi_R[phimax_id][0];
+	          double R_max = phi_R[phimax_id][1];
+	          
+	         
+		 
+		  double R_phi = R_min + (phi - phi_min) * (R_max - R_min) / (phi_max - phi_min);
+		
+                  inletField[faceI] = vector(0, 0, u_t);
+          }
+          
+   
+     #};
+    
+    
+    
+    
+
+
+
+    
+   
+    
+
+
+
+    }
+    outlet
+    {
+        type            	inletOutlet;
+        inletValue uniform 	(0 0 0);
+        value uniform		(0 0 0);
+    }
+    
+    
+
+    aortaWall
+    {
+        type            fixedValue;
+        value           uniform (0 0 0);
+    }
+
+}
+
+// ************************************************************************* //
