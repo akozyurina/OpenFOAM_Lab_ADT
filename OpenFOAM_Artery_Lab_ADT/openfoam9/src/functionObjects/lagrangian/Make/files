@@ -1,5 +1,0 @@
-cloudInfo/cloudInfo.C
-dsmcFields/dsmcFields.C
-particles/particles.C
-
-LIB = $(FOAM_LIBBIN)/liblagrangianFunctionObjects
