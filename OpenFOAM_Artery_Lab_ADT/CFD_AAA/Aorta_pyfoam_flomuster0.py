@@ -23,8 +23,10 @@ from PyFoam.Execution.ParallelExecution import LAMMachine
 from collections import OrderedDict
 
 
-
-pathtemplate = "/fya_hemo/AAA_hemo"
+script_path = os.path.abspath(__file__)
+pathtemplate = os.getcwd()
+print(pathtemplate)
+# pathtemplate = "/home/imcool/Desktop/OpenFOAM_Lab_ADT/OpenFOAM_Artery_Lab_ADT/CFD_AAA"
 
 """
 
@@ -33,6 +35,7 @@ Argparse
 """
 
 def list_of_floats(arg):
+    print(list(map(float, arg)))
     return list(map(float, arg))
 
 
@@ -50,21 +53,22 @@ parser.add_argument('--BC',default='parabolic',required=False, type=str)
 args = parser.parse_args()
 
 
-pathhome = f'{args.pwd}'
+pathhome = path.join(pathtemplate, f"example1")
+
+
 nodes = args.nodes
 
 
 T = args.T
 n_blocks = args.n_blocks
 levels = list_of_floats(args.levels)
-
 BC = args.BC
 
 
 
-np_node = 32
+np_node = 4
 max_np = nodes * np_node
-np_snap = 32 * nodes
+np_snap = 4 * nodes
 
 
 
@@ -90,47 +94,47 @@ if not os.path.isdir(rec_directory):
 """
 create openFoam directory
 """
-
-case_directory = path.join(pathhome, f"AortaOF_N")  # /userspace/fya/AAA_test/AortaOF_N"
+os.listdir(path='.')
+case_directory = path.join(pathhome, f"AortaOF_N")
+print(case_directory)
 if not os.path.isdir(case_directory):
     os.mkdir(case_directory)
 
 
 dir = path.join(pathhome, f"Aorta_N0")
+
 for f in os.listdir(dir):
     N = f.split('_', 1)[1]
-
     print(os.path.isdir(path.join(pathhome, f"AortaOF_N/Aorta_{N}/processor1/0.25")))
 
     if not os.path.isdir(path.join(pathhome, f"AortaOF_N/Aorta_{N}/processor1/0.25")):
-
-        
-
         """
         change template_path
         """
         os.chdir(pathtemplate)
-        print(pathtemplate)
-        template_path = path.join(f"mesh_template/template")
-
+        template_path = path.join(pathtemplate, f"mesh_template/template")
+        print(os.path.abspath(template_path))
         templateCase = SolutionDirectory(template_path, archive=None, paraviewLink=False)
 
         case = templateCase.cloneCase(path.join(pathhome, f"AortaOF_N/Aorta_{N}"))
-
+        print("DEB2")
         os.chdir(pathhome)
-
+        print(template_path)
+        print("DEB2", pathhome)
         pathsrc = path.join(pathhome, f"Aorta_N0/Aorta_{N}/triSurface")
         pathdst = path.join(pathhome, f"AortaOF_N/Aorta_{N}/constant")
+        print("DEB3")
         subprocess.run(["cp", "-r", f"{pathsrc}", f"{pathdst}"], check=True)
 
         pathsrc_1 = path.join(pathhome, f"Aorta_N0/Aorta_{N}/transportProperties")
         pathdst_1 = path.join(pathhome, f"AortaOF_N/Aorta_{N}/constant")
         subprocess.run(["cp", "-r", f"{pathsrc_1}", f"{pathdst_1}"], check=True)
-
+        print("DEB4")
         pathsrc_2 = path.join(pathhome, f"Aorta_N0/Aorta_{N}/controlDict")
         pathdst_2 = path.join(pathhome, f"AortaOF_N/Aorta_{N}/system")
+        
         subprocess.run(["cp", "-r", f"{pathsrc_2}", f"{pathdst_2}"], check=True)
-
+        print("DEB4")
     
 
 
@@ -150,7 +154,7 @@ for f in os.listdir(dir):
         zmax = Mesh_parameters['Bounding_box'][5]
 
 
-        dl = 0.025 / (100 * n_blocks)
+        dl = 0.025 / (10 * n_blocks)
         divx = int((xmax-xmin) / dl)
         divy = int((ymax-ymin) / dl)
         divz = int(zmax -zmin / dl)
@@ -283,13 +287,13 @@ for f in os.listdir(dir):
 
         os.chdir(path.join(pathhome, f"AortaOF_N/Aorta_{N}"))
         print(os.getcwd())
-        # subprocess.run(f"wmake", shell=True, check=True, cwd=os.getcwd())
+        subprocess.run(f"wmake", shell=True, check=True, cwd=os.getcwd())
         subprocess.run(f"Mesh_test", shell=True, check=True, cwd=os.getcwd())
 
         area_us = np.loadtxt(path.join(pathhome, f"AortaOF_N/Aorta_{N}/U_norm/area_us.txt"), dtype=float)
         area = area_us[0]
         us = area_us[1]
-
+        print("AAAAAAA", area, us)
         update_string(path.join(pathhome, f"AortaOF_N/Aorta_{N}/constant/transportProperties"),
                     f'key1',
                     f'{area}')
