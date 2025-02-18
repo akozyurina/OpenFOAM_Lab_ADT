@@ -15,52 +15,60 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-6
+7
 (
-    outlet
-    {
-        type            slip;
-        inGroups        List<word> 1(slip);
-        nFaces          0;
-        startFace       37206;
-    }
     inlet
     {
         type            slip;
         inGroups        List<word> 1(slip);
-        nFaces          499;
-        startFace       37206;
-    }
-    defaultFaces
-    {
-        type            empty;
-        inGroups        List<word> 1(empty);
-        nFaces          1767;
-        startFace       37705;
+        nFaces          0;
+        startFace       58731;
     }
     aortaWall
     {
         type            wall;
         inGroups        List<word> 1(wall);
+        nFaces          4544;
+        startFace       58731;
+    }
+    outlet1
+    {
+        type            patch;
+        nFaces          76;
+        startFace       63275;
+    }
+    outlet2
+    {
+        type            patch;
         nFaces          0;
-        startFace       39472;
+        startFace       63351;
     }
     procBoundary0to1
     {
         type            processor;
         inGroups        List<word> 1(processor);
-        nFaces          535;
-        startFace       39472;
+        nFaces          604;
+        startFace       63351;
         matchTolerance  0.0001;
         myProcNo        0;
         neighbProcNo    1;
+    }
+    procBoundary0to2
+    {
+        type            processor;
+        inGroups        List<word> 1(processor);
+        nFaces          518;
+        startFace       63955;
+        matchTolerance  0.0001;
+        myProcNo        0;
+        neighbProcNo    2;
     }
     procBoundary0to3
     {
         type            processor;
         inGroups        List<word> 1(processor);
-        nFaces          535;
-        startFace       40007;
+        nFaces          102;
+        startFace       64473;
         matchTolerance  0.0001;
         myProcNo        0;
         neighbProcNo    3;

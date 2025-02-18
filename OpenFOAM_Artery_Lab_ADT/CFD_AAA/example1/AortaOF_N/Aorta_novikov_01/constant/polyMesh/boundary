@@ -17,33 +17,31 @@ FoamFile
 
 4
 (
-    outlet
-    {
-        type            slip;
-        inGroups        List<word> 1(slip);
-        nFaces          987;
-        startFace       152411;
-    }
     inlet
     {
         type            slip;
         inGroups        List<word> 1(slip);
-        nFaces          980;
-        startFace       153398;
-    }
-    defaultFaces
-    {
-        type            empty;
-        inGroups        List<word> 1(empty);
-        nFaces          7044;
-        startFace       154378;
+        nFaces          493;
+        startFace       237975;
     }
     aortaWall
     {
         type            wall;
         inGroups        List<word> 1(wall);
-        nFaces          2045;
-        startFace       161422;
+        nFaces          16520;
+        startFace       238468;
+    }
+    outlet1
+    {
+        type            patch;
+        nFaces          76;
+        startFace       254988;
+    }
+    outlet2
+    {
+        type            patch;
+        nFaces          36;
+        startFace       255064;
     }
 )
 

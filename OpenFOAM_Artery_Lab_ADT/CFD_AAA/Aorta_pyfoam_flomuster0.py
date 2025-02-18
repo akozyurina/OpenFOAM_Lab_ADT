@@ -146,24 +146,24 @@ for f in os.listdir(dir):
 
 
 
-        xmin = Mesh_parameters['Bounding_box'][0]
-        xmax = Mesh_parameters['Bounding_box'][1]
-        ymin = Mesh_parameters['Bounding_box'][2]
-        ymax = Mesh_parameters['Bounding_box'][3]
-        zmin = Mesh_parameters['Bounding_box'][4]
-        zmax = Mesh_parameters['Bounding_box'][5]
+        xmin = -0.12038598485339744
+        xmax = 0.128764527624530172
+        ymin = -0.05159100810929238
+        ymax = 0.08459024385268212
+        zmin = -0.21997369135082
+        zmax = -0.0004999999114829409
 
 
-        dl = 0.025 / (10 * n_blocks)
+        dl = 0.025 / (20 * n_blocks)
         divx = int((xmax-xmin) / dl)
         divy = int((ymax-ymin) / dl)
         divz = int(zmax -zmin / dl)
     
 
     
-        xloc = Mesh_parameters['location_in_mesh'][0]
-        yloc = Mesh_parameters['location_in_mesh'][1]
-        zloc = Mesh_parameters['location_in_mesh'][2]
+        xloc = 0.01568738788122699
+        yloc = 0.004181623866489856
+        zloc = -0.06956737882703101
 
         dist = levels[0]
         lv = int(levels[1])
@@ -334,7 +334,7 @@ for f in os.listdir(dir):
         subprocess.run(f"mpirun -np {max_np} pimpleFoam -parallel", shell=True, check=True)
 
     finally:
-        subprocess.run(f"reconstructPar -time '{round(4*T, 2)}:{round(5*T, 2)}'", shell=True, check=True)
+        subprocess.run(f"reconstructParMesh -time '{round(4*T, 2)}:{round(5*T, 2)}'", shell=True, check=True)
 
         for n in range(max_np):
             pathrm = path.join(pathhome, f"AortaOF_N/Aorta_{N}/processor{n}")

@@ -15,62 +15,50 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-7
+6
 (
-    outlet
-    {
-        type            slip;
-        inGroups        List<word> 1(slip);
-        nFaces          525;
-        startFace       37359;
-    }
     inlet
     {
         type            slip;
         inGroups        List<word> 1(slip);
         nFaces          0;
-        startFace       37884;
-    }
-    defaultFaces
-    {
-        type            empty;
-        inGroups        List<word> 1(empty);
-        nFaces          1744;
-        startFace       37884;
+        startFace       57929;
     }
     aortaWall
     {
         type            wall;
         inGroups        List<word> 1(wall);
+        nFaces          4880;
+        startFace       57929;
+    }
+    outlet1
+    {
+        type            patch;
         nFaces          0;
-        startFace       39628;
+        startFace       62809;
+    }
+    outlet2
+    {
+        type            patch;
+        nFaces          36;
+        startFace       62809;
     }
     procBoundary3to0
     {
         type            processor;
         inGroups        List<word> 1(processor);
-        nFaces          535;
-        startFace       39628;
+        nFaces          102;
+        startFace       62845;
         matchTolerance  0.0001;
         myProcNo        3;
         neighbProcNo    0;
-    }
-    procBoundary3to1
-    {
-        type            processor;
-        inGroups        List<word> 1(processor);
-        nFaces          49;
-        startFace       40163;
-        matchTolerance  0.0001;
-        myProcNo        3;
-        neighbProcNo    1;
     }
     procBoundary3to2
     {
         type            processor;
         inGroups        List<word> 1(processor);
-        nFaces          603;
-        startFace       40212;
+        nFaces          492;
+        startFace       62947;
         matchTolerance  0.0001;
         myProcNo        3;
         neighbProcNo    2;

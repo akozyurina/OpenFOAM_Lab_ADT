@@ -1,0 +1,1 @@
+LIB = $(PWD)/../platforms/$(WM_OPTIONS)/lib/libmyParabolicVelocity_18196034663db4825ed471beac05efb1ac65d43e

@@ -17,50 +17,48 @@ FoamFile
 
 6
 (
-    outlet
-    {
-        type            slip;
-        inGroups        List<word> 1(slip);
-        nFaces          462;
-        startFace       37690;
-    }
     inlet
     {
         type            slip;
         inGroups        List<word> 1(slip);
         nFaces          0;
-        startFace       38152;
-    }
-    defaultFaces
-    {
-        type            empty;
-        inGroups        List<word> 1(empty);
-        nFaces          1796;
-        startFace       38152;
+        startFace       60139;
     }
     aortaWall
     {
         type            wall;
         inGroups        List<word> 1(wall);
-        nFaces          642;
-        startFace       39948;
+        nFaces          3869;
+        startFace       60139;
     }
-    procBoundary2to1
+    outlet1
+    {
+        type            patch;
+        nFaces          0;
+        startFace       64008;
+    }
+    outlet2
+    {
+        type            patch;
+        nFaces          0;
+        startFace       64008;
+    }
+    procBoundary2to0
     {
         type            processor;
         inGroups        List<word> 1(processor);
-        nFaces          516;
-        startFace       40590;
+        nFaces          518;
+        startFace       64008;
         matchTolerance  0.0001;
         myProcNo        2;
-        neighbProcNo    1;
+        neighbProcNo    0;
     }
     procBoundary2to3
     {
         type            processor;
         inGroups        List<word> 1(processor);
-        nFaces          603;
-        startFace       41106;
+        nFaces          492;
+        startFace       64526;
         matchTolerance  0.0001;
         myProcNo        2;
         neighbProcNo    3;
