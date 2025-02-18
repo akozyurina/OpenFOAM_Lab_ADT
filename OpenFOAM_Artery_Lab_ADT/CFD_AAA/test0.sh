@@ -33,7 +33,7 @@ export OMPI_MCA_pml=ucx
 source /fya_hdd/fya/aaa/bin/activate
 
 export PATH=$PATH:/fya_hdd/fya/AAA_test
-
+#export PATH=$PATH://home/imcool/Desktop/OpenFOAM_Lab_ADT/OpenFOAM_Artery_Lab_ADT/CFD_AAA/example1/AortaOF_N/Aorta_novikov_01
 
 path=$(pwd)
 echo $path
