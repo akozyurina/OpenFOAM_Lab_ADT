@@ -6,7 +6,13 @@ import math
 import numpy as np
 import PyFoam
 import argparse
+import shutil  # Для безопасного копирования/удаления
+import numpy as np
+import matplotlib.pyplot as plt
+import pathlib
+import logging # Для логирования
 
+from pathlib import Path # Для удобной работы с путями
 from os import path
 from PyFoam.RunDictionary.SolutionDirectory import SolutionDirectory
 from PyFoam.RunDictionary.ParsedParameterFile import ParsedParameterFile
@@ -48,6 +54,7 @@ parser.add_argument('--T',default='1.0', required=False, type=float)
 parser.add_argument('--n_blocks',default='2', required=False, type=float)
 parser.add_argument("--levels", required=False, nargs='+')
 parser.add_argument('--BC',default='parabolic',required=False, type=str)
+parser.add_argument('--rheology_model', default = 'Newtonian', choices = ['Newtonian', 'BirdCarreau', 'powerLaw'], help= 'Select the blood rheology model (e.g., Newtonian, CarreauYasuda, powerLaw).')
 
 
 args = parser.parse_args()
@@ -63,12 +70,11 @@ T = args.T
 n_blocks = args.n_blocks
 levels = list_of_floats(args.levels)
 BC = args.BC
+rheology_model = args.rheology_model
 
-
-
-np_node = 4
+np_node = 8
 max_np = nodes * np_node
-np_snap = 4 * nodes
+np_snap = 8 * nodes
 
 
 
@@ -105,9 +111,7 @@ dir = path.join(pathhome, f"Aorta_N0")
 
 for f in os.listdir(dir):
     N = f.split('_', 1)[1]
-    print(os.path.isdir(path.join(pathhome, f"AortaOF_N/Aorta_{N}/processor1/0.25")))
-
-    if not os.path.isdir(path.join(pathhome, f"AortaOF_N/Aorta_{N}/processor1/0.25")):
+    if not os.path.isdir(path.join(pathhome, f"AortaOF_N/Aorta_{N}/postProcessing")):
         """
         change template_path
         """
@@ -117,24 +121,20 @@ for f in os.listdir(dir):
         templateCase = SolutionDirectory(template_path, archive=None, paraviewLink=False)
 
         case = templateCase.cloneCase(path.join(pathhome, f"AortaOF_N/Aorta_{N}"))
-        print("DEB2")
+        
         os.chdir(pathhome)
-        print(template_path)
-        print("DEB2", pathhome)
+        
         pathsrc = path.join(pathhome, f"Aorta_N0/Aorta_{N}/triSurface")
         pathdst = path.join(pathhome, f"AortaOF_N/Aorta_{N}/constant")
-        print("DEB3")
         subprocess.run(["cp", "-r", f"{pathsrc}", f"{pathdst}"], check=True)
 
         pathsrc_1 = path.join(pathhome, f"Aorta_N0/Aorta_{N}/transportProperties")
         pathdst_1 = path.join(pathhome, f"AortaOF_N/Aorta_{N}/constant")
         subprocess.run(["cp", "-r", f"{pathsrc_1}", f"{pathdst_1}"], check=True)
-        print("DEB4")
         pathsrc_2 = path.join(pathhome, f"Aorta_N0/Aorta_{N}/controlDict")
         pathdst_2 = path.join(pathhome, f"AortaOF_N/Aorta_{N}/system")
-        
         subprocess.run(["cp", "-r", f"{pathsrc_2}", f"{pathdst_2}"], check=True)
-        print("DEB4")
+        
     
 
 
@@ -151,19 +151,19 @@ for f in os.listdir(dir):
         ymin = -0.05159100810929238
         ymax = 0.08459024385268212
         zmin = -0.21997369135082
-        zmax = -0.0004999999114829409
+        zmax = 0.0
 
 
-        dl = 0.025 / (20 * n_blocks)
+        dl = 0.025 / (10 * n_blocks)
         divx = int((xmax-xmin) / dl)
         divy = int((ymax-ymin) / dl)
         divz = int(zmax -zmin / dl)
     
 
     
-        xloc = 0.01568738788122699
-        yloc = 0.004181623866489856
-        zloc = -0.06956737882703101
+        xloc = 0
+        yloc = 0
+        zloc = -0.05
 
         dist = levels[0]
         lv = int(levels[1])
@@ -189,6 +189,126 @@ for f in os.listdir(dir):
         decomposePar = ParsedParameterFile(path.join(pathhome, f"AortaOF_N/Aorta_{N}", "system", "decomposeParDict"))
 
         decomposePar["numberOfSubdomains"] = np_snap
+
+
+
+        #меняем модель реологии в файле transportProperties
+        try: # Оборачиваем всю логику в try...except для надежности
+    # --- НАЧАЛО: Настройка модели реологии ---
+            print(f"[{N}] Настройка модели реологии: {rheology_model}")
+            case_path = Path(pathhome) / f"AortaOF_N/Aorta_{N}"
+            transport_props_path = case_path / "constant" / "transportProperties"
+
+            if not transport_props_path.is_file():
+                print(f"ОШИБКА [{N}]: Файл {transport_props_path} не найден. Пропуск настройки реологии.")
+                # continue # или sys.exit() если критично
+                raise FileNotFoundError(f"Файл {transport_props_path} не найден.") # Лучше вызвать ошибку
+
+            transportProps = ParsedParameterFile(str(transport_props_path)) # Загружаем файл
+
+            # 1. Устанавливаем основную модель
+            transportProps['transportModel'] = rheology_model
+
+            # 2. Определяем ОБЩИЙ список ключей верхнего уровня и под-словарей для ОЧИСТКИ
+            #    (все ключи и под-словари, которые *могут* принадлежать ДРУГИМ моделям)
+            possible_top_level_keys = ['nu', 'nuInf', 'nu0', 'k', 'n', 'a', 'nuMin', 'nuMax', 'TRef', 'TExp']
+            possible_coeffs_dicts = ["NewtonianCoeffs", "BirdCarreauCoeffs", "powerLawCoeffs"] # Добавьте другие, если нужно
+
+            # 3. Блок if/elif для установки ПАРАМЕТРОВ и ОЧИСТКИ
+            if rheology_model == 'Newtonian':
+                # Устанавливаем параметры Newtonian
+                transportProps['nu'] = '[0 2 -1 0 0 0 0] 3.5e-6' # ЗАМЕНИТЕ значение!
+                if 'rho' not in transportProps:
+                    transportProps['rho'] = '[1 -3 0 0 0 0 0] 1050' # ЗАМЕНИТЕ значение!
+                print(f"[{N}] Установлены параметры для Newtonian.")
+
+                # Удаляем ключи ВЕРХНЕГО УРОВНЯ от других моделей (кроме nu и rho)
+                for key in possible_top_level_keys:
+                    if key != 'nu' and key != 'rho' and key in transportProps:
+                        print(f"[{N}] Newtonian: Удаление ключа верхнего уровня '{key}'.")
+                        del transportProps[key]
+                # Удаляем ПОД-СЛОВАРИ от других моделей
+                for name in possible_coeffs_dicts:
+                    if name in transportProps:
+                        print(f"[{N}] Newtonian: Удаление под-словаря '{name}'.")
+                        del transportProps[name]
+
+            elif rheology_model == 'BirdCarreau':
+                coeffs_dict_name = "BirdCarreauCoeffs"
+                # Создание словаря параметров BirdCarreau
+                birdCarreau_params = {
+                    'nu0'   : '[0 2 -1 0 0 0 0] 1e-03',  # ЗАМЕНИТЕ!
+                    'nuInf' : '[0 2 -1 0 0 0 0] 1e-05', # ЗАМЕНИТЕ!
+                    'k'     : '[0 0 1 0 0 0 0] 1',      # ЗАМЕНИТЕ!
+                    'n'     : '[0 0 0 0 0 0 0] 0.5'     # ЗАМЕНИТЕ!
+                }
+                # Присвоение под-словарю
+                transportProps[coeffs_dict_name] = birdCarreau_params
+                print(f"[{N}] Добавлен под-словарь '{coeffs_dict_name}' с параметрами BirdCarreau.")
+                if 'rho' not in transportProps:
+                    transportProps['rho'] = '[1 -3 0 0 0 0 0] 1050'
+
+                # Удаляем ключи ВЕРХНЕГО УРОВНЯ от других моделей
+                for key in possible_top_level_keys:
+                    # Не удаляем ключи, которые могут быть частью этой модели (даже если они не в словаре)
+                    # и rho. Безопаснее удалить все, КРОМЕ rho.
+                    if key != 'rho' and key in transportProps:
+                        print(f"[{N}] BirdCarreau: Удаление ключа верхнего уровня '{key}'.")
+                        del transportProps[key]
+                # Удаляем ПОД-СЛОВАРИ от ДРУГИХ моделей
+                for name in possible_coeffs_dicts:
+                    if name != coeffs_dict_name and name in transportProps:
+                        print(f"[{N}] BirdCarreau: Удаление под-словаря '{name}'.")
+                        del transportProps[name]
+
+            elif rheology_model == 'powerLaw':
+                coeffs_dict_name = "powerLawCoeffs"
+                # Создание словаря параметров powerLaw
+                powerLaw_params = {
+                    'k'     : '[0 2 -1 0 0 0 0] 3.5e-6',  # ЗАМЕНИТЕ! (Проверьте размерность)
+                    'n'     : '[0 0 0 0 0 0 0] 0.5',    # ЗАМЕНИТЕ!
+                    'nuMin' : '[0 2 -1 0 0 0 0] 1e-6',  # ЗАМЕНИТЕ! (Увеличено с 1e-7)
+                    'nuMax' : '[0 2 -1 0 0 0 0] 1.0'    # ЗАМЕНИТЕ!
+                }
+                # Присвоение под-словарю
+                transportProps[coeffs_dict_name] = powerLaw_params
+                print(f"[{N}] Добавлен под-словарь '{coeffs_dict_name}' с параметрами powerLaw.")
+                if 'rho' not in transportProps:
+                    transportProps['rho'] = '[1 -3 0 0 0 0 0] 1050'
+
+                # Удаляем ключи ВЕРХНЕГО УРОВНЯ от других моделей
+                for key in possible_top_level_keys:
+                    if key != 'rho' and key in transportProps:
+                        print(f"[{N}] powerLaw: Удаление ключа верхнего уровня '{key}'.")
+                        del transportProps[key]
+                # Удаляем ПОД-СЛОВАРИ от ДРУГИХ моделей
+                for name in possible_coeffs_dicts:
+                    if name != coeffs_dict_name and name in transportProps:
+                        print(f"[{N}] powerLaw: Удаление под-словаря '{name}'.")
+                        del transportProps[name]
+
+            # Добавьте здесь elif для других моделей по аналогии
+
+            else:
+                # Обработка случая, если выбрана неизвестная модель (хотя argparse должен это предотвратить)
+                print(f"ПРЕДУПРЕЖДЕНИЕ [{N}]: Неизвестная модель реологии '{rheology_model}'. Параметры не установлены.")
+                # Возможно, стоит вызвать ошибку: raise ValueError(...)
+
+            # 4. Финальная запись файла (только ОДНА)
+            transportProps.writeFile()
+            print(f"[{N}] Файл {transport_props_path.name} окончательно обновлен для модели {rheology_model}.")
+
+            # --- КОНЕЦ: Настройка модели реологии ---
+        except FileNotFoundError as e:
+            print(f"ОШИБКА [{N}]: {e}")
+            # sys.exit(1) # или continue
+        except Exception as e:
+            print(f"ОШИБКА [{N}] при обновлении {transport_props_path}: {e}")
+            # sys.exit(1) # или continue
+
+
+
+
         decomposePar.writeFile()
     
         subprocess.run("decomposePar", check=True)
@@ -206,14 +326,21 @@ for f in os.listdir(dir):
                     f"        levels ( ({dist} {lv})); // levels must be ordered nearest first")
         
         
-
         os.chdir(path.join(pathhome, f"AortaOF_N/Aorta_{N}"))
-        print(os.getcwd())
-        subprocess.run([f"mpirun", "-np", f"{np_snap}", "snappyHexMesh", "-parallel"], check=True)
-
-        """
-        reconstruct 
-        """
+        tmp = os.getcwd()
+        try:
+            result = subprocess.run(
+                ["mpirun", "-np", f"{np_snap}", "snappyHexMesh", "-parallel"],
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            print("snappyHexMesh completed successfully.")
+            print(result.stdout)
+        except subprocess.CalledProcessError as e:
+            print("Error in snappyHexMesh:")
+            print(e.stderr)
 
         subprocess.run(["reconstructParMesh", "-latestTime"], check=True)
 
@@ -225,7 +352,7 @@ for f in os.listdir(dir):
             num_dir = 3
         else:
             num_dir = 2
-
+        print(num_dir)
         directory = path.join(pathhome, f"AortaOF_N/Aorta_{N}/{num_dir}/polyMesh")
         for fn in os.listdir(directory):
             update_string(path.join(pathhome, f"AortaOF_N/Aorta_{N}/{num_dir}/polyMesh/{fn}"),
@@ -243,32 +370,6 @@ for f in os.listdir(dir):
             pathrm = path.join(pathhome, f"AortaOF_N/Aorta_{N}/processor{n}")
             subprocess.run(["rm", "-rf", f"{pathrm}"], check=True)
 
-        """
-        rename patches
-
-        update_string(f"/home/yana/AortaOF_N/Aorta_{N}/constant//polyMesh/boundary",
-                    f"6",
-                    f"3")
-
-        update_string(f"/home/yana/AortaOF_N/Aorta_{N}/constant//polyMesh/boundary",
-                    f"topWall",
-                    f"inlet")
-        update_string(f"/home/yana/AortaOF_N/Aorta_{N}/constant//polyMesh/boundary",
-                    f"bottomWall",
-                    f"outlet")
-
-        remove parse block
-        """
-
-        """
-        prepare unsteady solver
-        """
-
-    
-
-        """
-        prepare BC
-        """
         
 
         pathsrc = path.join(pathtemplate, f"0_template/{BC}/0")
@@ -287,13 +388,20 @@ for f in os.listdir(dir):
 
         os.chdir(path.join(pathhome, f"AortaOF_N/Aorta_{N}"))
         print(os.getcwd())
+        print("Запуск wmake")
         subprocess.run(f"wmake", shell=True, check=True, cwd=os.getcwd())
-        subprocess.run(f"Mesh_test", shell=True, check=True, cwd=os.getcwd())
-
+        try: 
+            subprocess.run(["chmod", "+x", "./Mesh_test"], check=True)
+        except:
+            print("не получилось добавить право на исполнение")
+            exit
+        subprocess.run(f"./Mesh_test", shell=True, check=True, cwd=os.getcwd())
+        
+        
         area_us = np.loadtxt(path.join(pathhome, f"AortaOF_N/Aorta_{N}/U_norm/area_us.txt"), dtype=float)
         area = area_us[0]
         us = area_us[1]
-        print("AAAAAAA", area, us)
+        print(area, us)
         update_string(path.join(pathhome, f"AortaOF_N/Aorta_{N}/constant/transportProperties"),
                     f'key1',
                     f'{area}')
@@ -301,7 +409,7 @@ for f in os.listdir(dir):
                     f'key2',
                     f'{us}')
 
-       
+
         decomposePar = ParsedParameterFile(path.join(pathhome, f"AortaOF_N/Aorta_{N}", "system", "decomposeParDict"))
 
         decomposePar["numberOfSubdomains"] = max_np
@@ -310,31 +418,31 @@ for f in os.listdir(dir):
         subprocess.run("decomposePar", shell=True, check=True)
     
 
-
+    
     os.chdir(path.join(pathhome, f"AortaOF_N/Aorta_{N}"))
     
     controlDict = ParsedParameterFile(path.join(pathhome, f"AortaOF_N/Aorta_{N}", "system", "controlDict"))
-    controlDict["deltaT"] = 0.0005
-    controlDict["writeInterval"] = 0.25
-    controlDict["endTime"] = round(4*T, 2)
+    controlDict["deltaT"] = 0.01
+    controlDict["writeInterval"] = 0.01
+    controlDict["endTime"] = round(2 * T, 2)
     controlDict.writeFile()
 
 
-    if not os.path.isdir(path.join(pathhome, f"AortaOF_N/Aorta_{N}/processor1/{round(4*T, 2)}")):
+    if not os.path.isdir(path.join(pathhome, f"AortaOF_N/Aorta_{N}/processor1/{round(2*T, 2)}")):
         subprocess.run(f"mpirun -np {max_np} pimpleFoam -parallel", shell=True, check=True)
     
 
     controlDict = ParsedParameterFile(path.join(pathhome, f"AortaOF_N/Aorta_{N}", "system", "controlDict"))
 
-    controlDict["writeInterval"] = 0.01
-    controlDict["endTime"] = round(T * 5, 2)
+    controlDict["writeInterval"] = 0.001
+    controlDict["endTime"] = round(2 * T, 2)
     controlDict.writeFile()
 
     try:
         subprocess.run(f"mpirun -np {max_np} pimpleFoam -parallel", shell=True, check=True)
 
     finally:
-        subprocess.run(f"reconstructParMesh -time '{round(4*T, 2)}:{round(5*T, 2)}'", shell=True, check=True)
+        subprocess.run(f"reconstructPar -time '{round(1*T, 2)}:{round(2*T, 2)}'", shell=True, check=True)
 
         for n in range(max_np):
             pathrm = path.join(pathhome, f"AortaOF_N/Aorta_{N}/processor{n}")
@@ -344,3 +452,75 @@ for f in os.listdir(dir):
         postprocessing
         """
         subprocess.run(["pimpleFoam", "-postProcess", "-func", "wallShearStress"], check=True)
+        subprocess.run(["postProcess", "-func", "minMaxComponents"], check = True)
+
+
+# Функция для чтения данных из файла
+    # def read_data(file_path):
+    #     data = {"time": [], "field": [], "min_value": [], "max_value": []}
+        
+    #     with open(file_path, "r") as file:
+    #         for line in file:
+    #             # Пропуск пустых строк и комментариев
+    #             if line.strip() == "" or line.startswith("#"):
+    #                 continue
+                
+    #             # Разделение строки на части
+    #             parts = line.split()
+                
+    #             try:
+    #                 # Извлечение значений
+    #                 time = float(parts[0])
+    #                 field = parts[1]
+                    
+    #                 # Обработка векторных значений (например, для U)
+    #                 min_value = np.array([float(x) for x in parts[2][1:-1].split(",")])
+    #                 max_value = np.array([float(x) for x in parts[4][1:-1].split(",")])
+                    
+    #                 # Сохранение данных
+    #                 data["time"].append(time)
+    #                 data["field"].append(field)
+    #                 data["min_value"].append(min_value)
+    #                 data["max_value"].append(max_value)
+                
+    #             except Exception as e:
+    #                 print(f"Ошибка при обработке строки: {line.strip()} - {e}")
+        
+    #     return data
+
+    # # Путь к файлу
+    # file_path = (path.join(pathhome, f"AortaOF_N/Aorta_{N}", "postProcessing/minMaxComponents/2/fieldMinMax.dat"))
+
+
+    # # Чтение данных
+    # data = read_data(file_path)
+
+    # # Преобразование списков в массивы NumPy
+    # times = np.array(data["time"])
+    # fields = np.array(data["field"])
+    # min_values = np.array(data["min_value"])
+    # max_values = np.array(data["max_value"])
+    # # Выбор данных для поля 'U'
+    # u_indices = [i for i, field in enumerate(fields) if field == "U"]
+    # u_times = times[u_indices]
+    # u_min_values = np.linalg.norm(min_values[u_indices], axis=1)  # Модуль минимального значения
+    # u_max_values = np.linalg.norm(max_values[u_indices], axis=1)  # Модуль максимального значения
+    # # Создание графика
+    # plt.figure(figsize=(10, 6))
+
+    # # График минимальных значений
+    # plt.plot(u_times, u_min_values, label="Min |U|", color="blue", linestyle="--")
+
+    # # График максимальных значений
+    # plt.plot(u_times, u_max_values, label="Max |U|", color="red")
+
+    # # Настройка графика
+    # plt.title("Минимальные и максимальные значения модуля скорости во времени")
+    # plt.xlabel("Время")
+    # plt.ylabel("Модуль скорости")
+    # plt.legend()
+    # plt.grid(True)
+    # plt.show()
+    # # Сохранение графика
+    # results_graphics = (path.join(pathhome, f"/results_graphics/plot_minmax_novikov_01/"))
+    # plt.savefig("{BC}.png")
