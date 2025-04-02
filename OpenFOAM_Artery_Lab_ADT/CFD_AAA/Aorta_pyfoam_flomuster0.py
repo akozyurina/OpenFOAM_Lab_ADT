@@ -54,7 +54,7 @@ parser.add_argument('--T',default='1.0', required=False, type=float)
 parser.add_argument('--n_blocks',default='2', required=False, type=float)
 parser.add_argument("--levels", required=False, nargs='+')
 parser.add_argument('--BC',default='parabolic',required=False, type=str)
-parser.add_argument('--rheology_model', default = 'Newtonian', choices = ['Newtonian', 'BirdCarreau', 'powerLaw'], help= 'Select the blood rheology model (e.g., Newtonian, CarreauYasuda, powerLaw).')
+parser.add_argument('--rheology_model', default = 'Newtonian', choices = ['Newtonian', 'BirdCarreau', 'powerLaw', 'crossPowerLaw', 'herschelBulkley', 'casson'], help= 'Select the blood rheology model (e.g., Newtonian, BirdCarreau, powerLaw, crossPowerLaw, herschelBulkley, casson')
 
 
 args = parser.parse_args()
@@ -193,7 +193,7 @@ for f in os.listdir(dir):
 
 
         #меняем модель реологии в файле transportProperties
-        try: # Оборачиваем всю логику в try...except для надежности
+        try: 
     # --- НАЧАЛО: Настройка модели реологии ---
             print(f"[{N}] Настройка модели реологии: {rheology_model}")
             case_path = Path(pathhome) / f"AortaOF_N/Aorta_{N}"
@@ -212,12 +212,12 @@ for f in os.listdir(dir):
             # 2. Определяем ОБЩИЙ список ключей верхнего уровня и под-словарей для ОЧИСТКИ
             #    (все ключи и под-словари, которые *могут* принадлежать ДРУГИМ моделям)
             possible_top_level_keys = ['nu', 'nuInf', 'nu0', 'k', 'n', 'a', 'nuMin', 'nuMax', 'TRef', 'TExp']
-            possible_coeffs_dicts = ["NewtonianCoeffs", "BirdCarreauCoeffs", "powerLawCoeffs"] # Добавьте другие, если нужно
+            possible_coeffs_dicts = ["NewtonianCoeffs", "BirdCarreauCoeffs", "powerLawCoeffs", "crossPowerLaw", "hershelBulkley", "casson"] # Добавьте другие, если нужно
 
             # 3. Блок if/elif для установки ПАРАМЕТРОВ и ОЧИСТКИ
             if rheology_model == 'Newtonian':
                 # Устанавливаем параметры Newtonian
-                transportProps['nu'] = '[0 2 -1 0 0 0 0] 3.5e-6' # ЗАМЕНИТЕ значение!
+                transportProps['nu'] = '[0 2 -1 0 0 0 0] 0.0035' # ЗАМЕНИТЕ значение!
                 if 'rho' not in transportProps:
                     transportProps['rho'] = '[1 -3 0 0 0 0 0] 1050' # ЗАМЕНИТЕ значение!
                 print(f"[{N}] Установлены параметры для Newtonian.")
@@ -237,10 +237,11 @@ for f in os.listdir(dir):
                 coeffs_dict_name = "BirdCarreauCoeffs"
                 # Создание словаря параметров BirdCarreau
                 birdCarreau_params = {
-                    'nu0'   : '[0 2 -1 0 0 0 0] 1e-03',  # ЗАМЕНИТЕ!
-                    'nuInf' : '[0 2 -1 0 0 0 0] 1e-05', # ЗАМЕНИТЕ!
-                    'k'     : '[0 0 1 0 0 0 0] 1',      # ЗАМЕНИТЕ!
-                    'n'     : '[0 0 0 0 0 0 0] 0.5'     # ЗАМЕНИТЕ!
+                    'nu0'   : '[0 2 -1 0 0 0 0] 0.04',  
+                    'nuInf' : '[0 2 -1 0 0 0 0] 0.0035', 
+                    'k'     : '[0 0 1 0 0 0 0] 8.2',      
+                    'n'     : '[0 0 0 0 0 0 0] 0.2128'     
+                    #добавить лямбду!!!!! по умолчанию 2, надо сделать 0.64
                 }
                 # Присвоение под-словарю
                 transportProps[coeffs_dict_name] = birdCarreau_params
@@ -265,10 +266,10 @@ for f in os.listdir(dir):
                 coeffs_dict_name = "powerLawCoeffs"
                 # Создание словаря параметров powerLaw
                 powerLaw_params = {
-                    'k'     : '[0 2 -1 0 0 0 0] 3.5e-6',  # ЗАМЕНИТЕ! (Проверьте размерность)
-                    'n'     : '[0 0 0 0 0 0 0] 0.5',    # ЗАМЕНИТЕ!
-                    'nuMin' : '[0 2 -1 0 0 0 0] 1e-6',  # ЗАМЕНИТЕ! (Увеличено с 1e-7)
-                    'nuMax' : '[0 2 -1 0 0 0 0] 1.0'    # ЗАМЕНИТЕ!
+                    'k'     : '[0 2 -1 0 0 0 0] 0.017',  
+                    'n'     : '[0 0 0 0 0 0 0] 0.708',    
+                    'nuMin' : '[0 2 -1 0 0 0 0] 0.0035',  
+                    'nuMax' : '[0 2 -1 0 0 0 0] 0.04'    
                 }
                 # Присвоение под-словарю
                 transportProps[coeffs_dict_name] = powerLaw_params
@@ -286,7 +287,77 @@ for f in os.listdir(dir):
                     if name != coeffs_dict_name and name in transportProps:
                         print(f"[{N}] powerLaw: Удаление под-словаря '{name}'.")
                         del transportProps[name]
+            elif rheology_model == 'crossPowerLaw':
+                coeffs_dict_name = "crossPowerLawCoeffs"
+                # Создание словаря параметров Cross Power Law
+                crossPowerLaw_params = {
+                    'nu0'   : '[0 2 -1 0 0 0 0] 0.04',  
+                    'nuInf' : '[0 2 -1 0 0 0 0] 0.0035', 
+                    'm'     : '[0 0 1 0 0 0 0] 8.2',      
+                    'n'     : '[0 0 0 0 0 0 0] 0.2128'     
+                }
+                # Присвоение под-словарю
+                transportProps[coeffs_dict_name] = crossPowerLaw_params
+                print(f"[{N}] Добавлен под-словарь '{coeffs_dict_name}' с параметрами Cross Power Law.")
+                if 'rho' not in transportProps:
+                    transportProps['rho'] = '[1 -3 0 0 0 0 0] 1050'
+                # Удаляем ключи ВЕРХНЕГО УРОВНЯ от других моделей
+                for key in possible_top_level_keys:
+                    if key != 'rho' and key in transportProps:
+                        print(f"[{N}] Cross Power Law: Удаление ключа верхнего уровня '{key}'.")
+                        del transportProps[key]
+                # Удаляем ПОД-СЛОВАРИ от ДРУГИХ моделей
+                for name in possible_coeffs_dicts:
+                    if name != coeffs_dict_name and name in transportProps:
+                        print(f"[{N}] Cross Power Law: Удаление под-словаря '{name}'.")
+                        del transportProps[name]
 
+            elif rheology_model == 'herschelBulkley':
+                coeffs_dict_name = "herschelBulkleyCoeffs"
+                # Создание словаря параметров Herschel-Bulkley
+                herschelBulkley_params = {
+                    'tau0'  : '[0 2 -2 0 0 0 0] 0.01',  
+                    'k'     : '[0 2 -1 0 0 0 0] 0.017',  
+                    'n'     : '[0 0 0 0 0 0 0] 0.708'     
+                }
+                # Присвоение под-словарю
+                transportProps[coeffs_dict_name] = herschelBulkley_params
+                print(f"[{N}] Добавлен под-словарь '{coeffs_dict_name}' с параметрами Herschel-Bulkley.")
+                if 'rho' not in transportProps:
+                    transportProps['rho'] = '[1 -3 0 0 0 0 0] 1050'
+                # Удаляем ключи ВЕРХНЕГО УРОВНЯ от других моделей
+                for key in possible_top_level_keys:
+                    if key != 'rho' and key in transportProps:
+                        print(f"[{N}] Herschel-Bulkley: Удаление ключа верхнего уровня '{key}'.")
+                        del transportProps[key]
+                # Удаляем ПОД-СЛОВАРИ от ДРУГИХ моделей
+                for name in possible_coeffs_dicts:
+                    if name != coeffs_dict_name and name in transportProps:
+                        print(f"[{N}] Herschel-Bulkley: Удаление под-словаря '{name}'.")
+                        del transportProps[name]
+
+            elif rheology_model == 'casson':
+                coeffs_dict_name = "cassonCoeffs"
+                # Создание словаря параметров Casson
+                casson_params = {
+                    'tau0'  : '[0 2 -2 0 0 0 0] 0.01',  
+                    'mu'    : '[0 2 -1 0 0 0 0] 0.0035'     
+                }
+                # Присвоение под-словарю
+                transportProps[coeffs_dict_name] = casson_params
+                print(f"[{N}] Добавлен под-словарь '{coeffs_dict_name}' с параметрами Casson.")
+                if 'rho' not in transportProps:
+                    transportProps['rho'] = '[1 -3 0 0 0 0 0] 1050'
+                # Удаляем ключи ВЕРХНЕГО УРОВНЯ от других моделей
+                for key in possible_top_level_keys:
+                    if key != 'rho' and key in transportProps:
+                        print(f"[{N}] Casson: Удаление ключа верхнего уровня '{key}'.")
+                        del transportProps[key]
+                # Удаляем ПОД-СЛОВАРИ от ДРУГИХ моделей
+                for name in possible_coeffs_dicts:
+                    if name != coeffs_dict_name and name in transportProps:
+                        print(f"[{N}] Casson: Удаление под-словаря '{name}'.")
+                        del transportProps[name]
             # Добавьте здесь elif для других моделей по аналогии
 
             else:
