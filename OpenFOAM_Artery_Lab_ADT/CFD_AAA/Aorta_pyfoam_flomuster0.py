@@ -54,7 +54,7 @@ parser.add_argument('--T',default='1.0', required=False, type=float)
 parser.add_argument('--n_blocks',default='2', required=False, type=float)
 parser.add_argument("--levels", required=False, nargs='+')
 parser.add_argument('--BC',default='parabolic',required=False, type=str)
-parser.add_argument('--rheology_model', default = 'Newtonian', choices = ['Newtonian', 'BirdCarreau', 'powerLaw', 'crossPowerLaw', 'herschelBulkley', 'casson'], help= 'Select the blood rheology model (e.g., Newtonian, BirdCarreau, powerLaw, crossPowerLaw, herschelBulkley, casson')
+parser.add_argument('--rheology_model', default = 'Newtonian', choices = ['Newtonian', 'BirdCarreau', 'powerLaw', 'CrossPowerLaw', 'HerschelBulkley', 'Casson'], help= 'Select the blood rheology model (e.g., Newtonian, BirdCarreau, powerLaw, CrossPowerLaw, herschelBulkley, Casson')
 
 
 args = parser.parse_args()
@@ -145,7 +145,6 @@ for f in os.listdir(dir):
 
 
 
-
         xmin = -0.12038598485339744
         xmax = 0.128764527624530172
         ymin = -0.05159100810929238
@@ -212,7 +211,7 @@ for f in os.listdir(dir):
             # 2. Определяем ОБЩИЙ список ключей верхнего уровня и под-словарей для ОЧИСТКИ
             #    (все ключи и под-словари, которые *могут* принадлежать ДРУГИМ моделям)
             possible_top_level_keys = ['nu', 'nuInf', 'nu0', 'k', 'n', 'a', 'nuMin', 'nuMax', 'TRef', 'TExp']
-            possible_coeffs_dicts = ["NewtonianCoeffs", "BirdCarreauCoeffs", "powerLawCoeffs", "crossPowerLaw", "hershelBulkley", "casson"] # Добавьте другие, если нужно
+            possible_coeffs_dicts = ["NewtonianCoeffs", "BirdCarreauCoeffs", "powerLawCoeffs", "CrossPowerLaw", "HershelBulkley", "Casson"] # Добавьте другие, если нужно
 
             # 3. Блок if/elif для установки ПАРАМЕТРОВ и ОЧИСТКИ
             if rheology_model == 'Newtonian':
@@ -287,17 +286,17 @@ for f in os.listdir(dir):
                     if name != coeffs_dict_name and name in transportProps:
                         print(f"[{N}] powerLaw: Удаление под-словаря '{name}'.")
                         del transportProps[name]
-            elif rheology_model == 'crossPowerLaw':
-                coeffs_dict_name = "crossPowerLawCoeffs"
+            elif rheology_model == 'CrossPowerLaw':
+                coeffs_dict_name = "CrossPowerLawCoeffs"
                 # Создание словаря параметров Cross Power Law
-                crossPowerLaw_params = {
+                CrossPowerLaw_params = {
                     'nu0'   : '[0 2 -1 0 0 0 0] 0.04',  
                     'nuInf' : '[0 2 -1 0 0 0 0] 0.0035', 
                     'm'     : '[0 0 1 0 0 0 0] 8.2',      
                     'n'     : '[0 0 0 0 0 0 0] 0.2128'     
                 }
                 # Присвоение под-словарю
-                transportProps[coeffs_dict_name] = crossPowerLaw_params
+                transportProps[coeffs_dict_name] = CrossPowerLaw_params
                 print(f"[{N}] Добавлен под-словарь '{coeffs_dict_name}' с параметрами Cross Power Law.")
                 if 'rho' not in transportProps:
                     transportProps['rho'] = '[1 -3 0 0 0 0 0] 1050'
@@ -336,15 +335,15 @@ for f in os.listdir(dir):
                         print(f"[{N}] Herschel-Bulkley: Удаление под-словаря '{name}'.")
                         del transportProps[name]
 
-            elif rheology_model == 'casson':
-                coeffs_dict_name = "cassonCoeffs"
+            elif rheology_model == 'Casson':
+                coeffs_dict_name = "CassonCoeffs"
                 # Создание словаря параметров Casson
-                casson_params = {
+                Casson_params = {
                     'tau0'  : '[0 2 -2 0 0 0 0] 0.01',  
                     'mu'    : '[0 2 -1 0 0 0 0] 0.0035'     
                 }
                 # Присвоение под-словарю
-                transportProps[coeffs_dict_name] = casson_params
+                transportProps[coeffs_dict_name] = Casson_params
                 print(f"[{N}] Добавлен под-словарь '{coeffs_dict_name}' с параметрами Casson.")
                 if 'rho' not in transportProps:
                     transportProps['rho'] = '[1 -3 0 0 0 0 0] 1050'
@@ -505,7 +504,7 @@ for f in os.listdir(dir):
 
     controlDict = ParsedParameterFile(path.join(pathhome, f"AortaOF_N/Aorta_{N}", "system", "controlDict"))
 
-    controlDict["writeInterval"] = 0.001
+    controlDict["writeInterval"] = 0.01
     controlDict["endTime"] = round(2 * T, 2)
     controlDict.writeFile()
 
@@ -524,74 +523,3 @@ for f in os.listdir(dir):
         """
         subprocess.run(["pimpleFoam", "-postProcess", "-func", "wallShearStress"], check=True)
         subprocess.run(["postProcess", "-func", "minMaxComponents"], check = True)
-
-
-# Функция для чтения данных из файла
-    # def read_data(file_path):
-    #     data = {"time": [], "field": [], "min_value": [], "max_value": []}
-        
-    #     with open(file_path, "r") as file:
-    #         for line in file:
-    #             # Пропуск пустых строк и комментариев
-    #             if line.strip() == "" or line.startswith("#"):
-    #                 continue
-                
-    #             # Разделение строки на части
-    #             parts = line.split()
-                
-    #             try:
-    #                 # Извлечение значений
-    #                 time = float(parts[0])
-    #                 field = parts[1]
-                    
-    #                 # Обработка векторных значений (например, для U)
-    #                 min_value = np.array([float(x) for x in parts[2][1:-1].split(",")])
-    #                 max_value = np.array([float(x) for x in parts[4][1:-1].split(",")])
-                    
-    #                 # Сохранение данных
-    #                 data["time"].append(time)
-    #                 data["field"].append(field)
-    #                 data["min_value"].append(min_value)
-    #                 data["max_value"].append(max_value)
-                
-    #             except Exception as e:
-    #                 print(f"Ошибка при обработке строки: {line.strip()} - {e}")
-        
-    #     return data
-
-    # # Путь к файлу
-    # file_path = (path.join(pathhome, f"AortaOF_N/Aorta_{N}", "postProcessing/minMaxComponents/2/fieldMinMax.dat"))
-
-
-    # # Чтение данных
-    # data = read_data(file_path)
-
-    # # Преобразование списков в массивы NumPy
-    # times = np.array(data["time"])
-    # fields = np.array(data["field"])
-    # min_values = np.array(data["min_value"])
-    # max_values = np.array(data["max_value"])
-    # # Выбор данных для поля 'U'
-    # u_indices = [i for i, field in enumerate(fields) if field == "U"]
-    # u_times = times[u_indices]
-    # u_min_values = np.linalg.norm(min_values[u_indices], axis=1)  # Модуль минимального значения
-    # u_max_values = np.linalg.norm(max_values[u_indices], axis=1)  # Модуль максимального значения
-    # # Создание графика
-    # plt.figure(figsize=(10, 6))
-
-    # # График минимальных значений
-    # plt.plot(u_times, u_min_values, label="Min |U|", color="blue", linestyle="--")
-
-    # # График максимальных значений
-    # plt.plot(u_times, u_max_values, label="Max |U|", color="red")
-
-    # # Настройка графика
-    # plt.title("Минимальные и максимальные значения модуля скорости во времени")
-    # plt.xlabel("Время")
-    # plt.ylabel("Модуль скорости")
-    # plt.legend()
-    # plt.grid(True)
-    # plt.show()
-    # # Сохранение графика
-    # results_graphics = (path.join(pathhome, f"/results_graphics/plot_minmax_novikov_01/"))
-    # plt.savefig("{BC}.png")
