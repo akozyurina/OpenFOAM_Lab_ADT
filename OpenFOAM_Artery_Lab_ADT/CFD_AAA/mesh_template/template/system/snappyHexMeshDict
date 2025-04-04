@@ -50,13 +50,13 @@ castellatedMeshControls
   maxGlobalCells 70000000;
   minRefinementCells 1;
   maxLoadUnbalance 0.1;
-  nCellsBetweenLevels 3;
+  nCellsBetweenLevels 4;
   features
     (
 
       {
         file "aortaWall.eMesh";
-        level 0;
+        level 1;
 
       }
       
@@ -64,12 +64,12 @@ castellatedMeshControls
       
       {
 		file	"outlet1.eMesh";
-		level 0;
+		level 1;
 	}
 	
 	{
 		file	"outlet2.eMesh";
-		level 0;
+		level 1;
 	}
       
     );
@@ -83,14 +83,14 @@ castellatedMeshControls
     {
       level
         (
-          0
-          0
+          2
+          3
         );
     }  
     
     outlet1
 		{
-			level	( 0 0 );
+			level	( 1 1 );
 			patchInfo
 			{
 				type	patch;
@@ -101,7 +101,7 @@ castellatedMeshControls
     outlet2
     
 		{
-			level	( 0 0 );
+			level	( 1 1 );
 			patchInfo
 			{
 				type	patch;
@@ -121,22 +121,23 @@ castellatedMeshControls
 {
     mode  distance;           // refinement level 3 within 2.0 m
         levels
+        
   }
   
   }
   
   
-  locationInMesh
+  locationInMesh 
   
   allowFreeStandingZoneFaces yes;
 }
 
 snapControls
 {
-  nSmoothPatch 5;
-  tolerance 5;
-  nSolveIter 800;
-  nRelaxIter 5;
+  nSmoothPatch 10;
+  tolerance 2;
+  nSolveIter 80;
+  nRelaxIter 10;
   nFeatureSnapIter 30;
   implicitFeatureSnap       true;
   explicitFeatureSnap       false ;
@@ -155,14 +156,14 @@ addLayersControls
   {
     aortaWall
     {
-      nSurfaceLayers 3;
+      nSurfaceLayers 7;
     }
    
   }
   nGrow 0;
-  featureAngle 150;
+  featureAngle 110;
   slipFeatureAngle 30;
-  nRelaxIter 5;
+  nRelaxIter 10;
   nSmoothSurfaceNormals 1;
   nSmoothNormals 3;
   nSmoothThickness 10;
@@ -176,7 +177,7 @@ addLayersControls
 
 meshQualityControls
 {
-  maxNonOrtho 45;
+  maxNonOrtho 60;
   maxBoundarySkewness 20;
   maxInternalSkewness 4;
   maxConcave 80;
@@ -188,11 +189,11 @@ meshQualityControls
   minFaceWeight 0.05;
   minVolRatio 0.01;
   minTriangleTwist -1;
-  nSmoothScale 4;
+  nSmoothScale 6;
   errorReduction 0.75;
   relaxed
   {
-    maxNonOrtho 45;
+    maxNonOrtho 65;
   }
 }
 
