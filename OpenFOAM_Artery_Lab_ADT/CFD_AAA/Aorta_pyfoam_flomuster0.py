@@ -413,6 +413,25 @@ for f in os.listdir(dir):
                     f'key2',
                     f'{us}')
 
+          # --- ДОБАВИТЬ ДЛЯ ОТЛАДКИ ---
+        fvSolution_final_path = path.join(pathhome, f"AortaOF_N/Aorta_{N}", "system", "fvSolution")
+        print(f"--- DEBUG: Checking content of {fvSolution_final_path} BEFORE final decomposePar ---")
+        try:
+            with open(fvSolution_final_path, 'r') as f:
+                # Читаем и ищем строку с решателем для p
+                content = f.read()
+                print(content) # Печатаем весь файл для проверки
+                if "solver           GAMG;" in content and "p\n    {" in content:
+                     print("--- DEBUG: GAMG found for p. Correct.")
+                elif "solver          DICPCG;" in content and "p\n    {" in content:
+                     print("--- DEBUG: DICPCG found for p. WRONG FILE CONTENT!")
+                else:
+                     print("--- DEBUG: Solver for p not found or format unexpected.")
+        except FileNotFoundError:
+            print(f"--- DEBUG: ERROR - {fvSolution_final_path} not found!")
+        print(f"--- DEBUG: End check ---")
+        input(">>> Press Enter to run decomposePar and continue...") # Пауза для просмотра
+        # --- КОНЕЦ ОТЛАДОЧНОГО БЛОКА ---
 
         decomposePar = ParsedParameterFile(path.join(pathhome, f"AortaOF_N/Aorta_{N}", "system", "decomposeParDict"))
 
